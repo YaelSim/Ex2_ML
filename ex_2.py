@@ -15,18 +15,6 @@ def knn(train_set, labels_arr, test_set, k):
             train = np.array(train_set[j])
             dist = np.linalg.norm(test - train)
             dist_list.append(dist)
-            """
-            # append only the k smallest
-            if len(dist_list) < k:
-                dist_list.append(dist)
-            else:
-                dist_list.sort()
-                len_ = len(dist_list) - 1
-                remove_dist = dist_list[len_]
-                if remove_dist > dist:
-                    dist_list.remove(remove_dist)
-                    dist_list.append(dist)
-            """
             # insert the label to the dict
             dictionary[dist] = line
             line += 1
@@ -44,14 +32,6 @@ def knn(train_set, labels_arr, test_set, k):
             result = int(labels_arr[ind2])
             closes_labels.append(result)
 
-        """
-        # sort and get the k smallest
-        k_smallest = np.argpartition(dist_list, k)
-        # get the k nearest labels
-        closes_labels = []
-        for label in range(k):
-            closes_labels.append(labels_arr[k_smallest[label]])
-        """
         # assign a class to the test point according to the majority of the classes
         count = np.bincount(closes_labels)
         class_assign = np.argmax(count)
@@ -59,20 +39,24 @@ def knn(train_set, labels_arr, test_set, k):
     return new_knn_labels
 
 
-def mc_perceptron(train_x, train_y):
+def mc_perceptron(train_x, train_y, test_x):
     train_x = np.array(train_x)
     train_y = np.array(train_y)
+    test_x = np.array(test_x)
+    # add bias
+    train_bias = [1] * len(train_x)
+    train_x = np.concatenate((train_x, np.array(train_bias)[:, None]), axis=1)
+    test_bias = [1] * len(test_x)
+    test_x = np.concatenate((test_x, np.array(test_bias)[:, None]), axis=1)
 
     # initialize array of w
-    w = np.zeros((3, 12))
-
+    w = np.zeros((3, 13))
     # initialize eta and epochs
     eta = 0.1
     epochs = 100
 
     # train
     for epoch in range(epochs):
-        count_mis = 0
         # shuffle the training seta
         zip_info = list(zip(train_x, train_y))
         np.random.shuffle(zip_info)
@@ -85,10 +69,55 @@ def mc_perceptron(train_x, train_y):
             if y != y_hat:
                 w[y, :] += eta * x
                 w[y_hat, :] -= eta * x
-            else:
-                count_mis += 1
-        print("epoch: {}, success rate: {}".format(epoch, (count_mis / 355) * 100))
-    return w
+
+    perc = []
+    # get the test classification
+    for test in test_x:
+        test = np.array(test)
+        classify = np.argmax(np.dot(w, test))
+        perc.append(classify)
+    return perc
+
+
+def passive_aggressive(train_x, train_y, test_x):
+    train_x = np.array(train_x)
+    train_y = np.array(train_y)
+    test_x = np.array(test_x)
+    # add bias
+    train_bias = [1] * len(train_x)
+    train_x = np.concatenate((train_x, np.array(train_bias)[:, None]), axis=1)
+    test_bias = [1] * len(test_x)
+    test_x = np.concatenate((test_x, np.array(test_bias)[:, None]), axis=1)
+
+    # initialize array of w and epochs
+    w = np.zeros((3, 13))
+    epochs = 100
+
+    # train
+    for epoch in range(epochs):
+        # shuffle the training seta
+        zip_info = list(zip(train_x, train_y))
+        np.random.shuffle(zip_info)
+        # run on each train sample
+        for x, y in zip(train_x, train_y):
+            y = int(y)
+            y_hat = np.argmax(np.dot(w, x))
+            y_hat = int(y_hat)
+            # update - if y = y_hat then we don't need to update. can see that here:
+            # https://www.geeksforgeeks.org/passive-aggressive-classifiers/
+            if y != y_hat:
+                loss = max(0, 1 - (np.dot(w[y, :], x)) + (np.dot(w[y_hat, :], x)))
+                tau = loss / (2 * (np.power(np.linalg.norm(x), 2)))
+                w[y, :] += tau * x
+                w[y_hat, :] -= tau * x
+
+    pa = []
+    # get the test classification
+    for test in test_x:
+        test = np.array(test)
+        classify = np.argmax(np.dot(w, test))
+        pa.append(classify)
+    return pa
 
 
 def main():
@@ -106,17 +135,19 @@ def main():
     for i in range(12):
         train_set[:, i] = (train_set[:, i] - train_set[:, i].min()) / (train_set[:, i].max() - train_set[:, i].min())
 
-    # k=3 and k=5 returns me 77.14%
-    k = 3
+    # when k=7 returns me 77.14%
+    k = 7
     # run the knn algorithm
     knn_alg = knn(train_set, labels_arr, test_set, k)
-    #print(knn_alg)
 
-    perceptron_alg = mc_perceptron(train_set, labels_arr)
-    #print(perceptron_alg)
+    # run perceptron with more then 60% success
+    perceptron_alg = mc_perceptron(train_set, labels_arr, test_set)
 
-    # *********** todo print int the end:
-    ## print(f"knn: {knn_yhat}, perceptron: {perceptron_yhat}, pa: {pa_yhat}")
+    # run passive-aggressive with more then 60% success
+    pa_alg = passive_aggressive(train_set, labels_arr, test_set)
+
+    for i in range(len(knn_alg)):
+        print(f"knn: {knn_alg[i]}, perceptron: {perceptron_alg[i]}, pa: {pa_alg[i]}")
 
 
 if __name__ == "__main__":
