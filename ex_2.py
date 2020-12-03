@@ -40,7 +40,8 @@ def knn(train_set, labels_arr, test_set, k):
         for ind in k_smallest:
             labels.append(dictionary[ind])
         for ind2 in labels:
-            result = int(labels_arr[int(ind2)])
+            ind2 = int(ind2)
+            result = int(labels_arr[ind2])
             closes_labels.append(result)
 
         """
@@ -58,6 +59,38 @@ def knn(train_set, labels_arr, test_set, k):
     return new_knn_labels
 
 
+def mc_perceptron(train_x, train_y):
+    train_x = np.array(train_x)
+    train_y = np.array(train_y)
+
+    # initialize array of w
+    w = np.zeros((3, 12))
+
+    # initialize eta and epochs
+    eta = 0.1
+    epochs = 100
+
+    # train
+    for epoch in range(epochs):
+        count_mis = 0
+        # shuffle the training seta
+        zip_info = list(zip(train_x, train_y))
+        np.random.shuffle(zip_info)
+        # run on each train sample
+        for x, y in zip(train_x, train_y):
+            y = int(y)
+            y_hat = np.argmax(np.dot(w, x))
+            y_hat = int(y_hat)
+            # update
+            if y != y_hat:
+                w[y, :] += eta * x
+                w[y_hat, :] -= eta * x
+            else:
+                count_mis += 1
+        print("epoch: {}, success rate: {}".format(epoch, (count_mis / 355) * 100))
+    return w
+
+
 def main():
     train_x, train_y, test_x = sys.argv[1], sys.argv[2], sys.argv[3]
     # change Red wine to '1', and white wine to '0'
@@ -73,10 +106,14 @@ def main():
     for i in range(12):
         train_set[:, i] = (train_set[:, i] - train_set[:, i].min()) / (train_set[:, i].max() - train_set[:, i].min())
 
+    # k=3 and k=5 returns me 77.14%
     k = 3
     # run the knn algorithm
     knn_alg = knn(train_set, labels_arr, test_set, k)
-    print(knn_alg)
+    #print(knn_alg)
+
+    perceptron_alg = mc_perceptron(train_set, labels_arr)
+    #print(perceptron_alg)
 
     # *********** todo print int the end:
     ## print(f"knn: {knn_yhat}, perceptron: {perceptron_yhat}, pa: {pa_yhat}")
