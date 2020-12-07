@@ -50,7 +50,7 @@ def mc_perceptron(train_x, train_y, test_x):
     test_x = np.concatenate((test_x, np.array(test_bias)[:, None]), axis=1)
 
     # initialize array of w
-    w = np.zeros((3, 13))
+    w = np.zeros((3, train_x.shape[1]))
     # initialize eta and epochs
     eta = 0.1
     epochs = 100
@@ -90,7 +90,7 @@ def passive_aggressive(train_x, train_y, test_x):
     test_x = np.concatenate((test_x, np.array(test_bias)[:, None]), axis=1)
 
     # initialize array of w and epochs
-    w = np.zeros((3, 13))
+    w = np.zeros((3, train_x.shape[1]))
     epochs = 100
 
     # train
@@ -101,15 +101,26 @@ def passive_aggressive(train_x, train_y, test_x):
         # run on each train sample
         for x, y in zip(train_x, train_y):
             y = int(y)
-            y_hat = np.argmax(np.dot(w, x))
+            # remove y from w
+            if y == 0:
+                temp_w = min(np.dot(w[1], x), np.dot(w[2], x)) - 1
+                mul_w = [temp_w, np.dot(w[1], x), np.dot(w[2], x)]
+            elif y == 1:
+                temp_w = min(np.dot(w[0], x), np.dot(w[2], x)) - 1
+                mul_w = [np.dot(w[0], x), temp_w, np.dot(w[2], x)]
+            else:
+                temp_w = min(np.dot(w[0], x), np.dot(w[1], x)) - 1
+                mul_w = [np.dot(w[0], x), np.dot(w[1], x), temp_w]
+            # get max from the multiply
+            y_hat = np.argmax(mul_w)
             y_hat = int(y_hat)
-            # update - if y = y_hat then we don't need to update. can see that here:
-            # https://www.geeksforgeeks.org/passive-aggressive-classifiers/
-            if y != y_hat:
-                loss = max(0, 1 - (np.dot(w[y, :], x)) + (np.dot(w[y_hat, :], x)))
-                tau = loss / (2 * (np.power(np.linalg.norm(x), 2)))
-                w[y, :] += tau * x
-                w[y_hat, :] -= tau * x
+            # calculate loss and the new tau
+            loss = max(0, 1 - (np.dot(w[y, :], x)) + (np.dot(w[y_hat, :], x)))
+            tau = loss / (2 * (np.power(np.linalg.norm(x), 2)))
+            #update
+            w[y, :] += tau * x
+            w[y_hat, :] -= tau * x
+
 
     pa = []
     # get the test classification
